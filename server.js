@@ -14,13 +14,8 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// Database connection state cache
+// Database connection state cache (no longer used for connection blocking, handled in middleware)
 let isDbConnected = false;
-
-// Connect to Database
-connectDB().then(connected => {
-  isDbConnected = connected;
-});
 
 // Watch connection state
 mongoose.connection.on('connected', () => {
@@ -35,11 +30,14 @@ mongoose.connection.on('error', () => {
 
 
 // Helper database verification middleware
-const checkDbConnection = (req, res, next) => {
-  if (!isDbConnected) {
-    return res.status(503).json({ 
-      error: 'Database connection is offline. Please make sure MongoDB is running and your connection URI in .env is correct.' 
-    });
+const checkDbConnection = async (req, res, next) => {
+  if (mongoose.connection.readyState !== 1) {
+    const connected = await connectDB();
+    if (!connected) {
+      return res.status(503).json({ 
+        error: 'Database connection is offline. Please make sure MongoDB is running and your connection URI in .env is correct.' 
+      });
+    }
   }
   next();
 };
