@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { User, Wallet, RotateCcw, AlertTriangle, Check } from 'lucide-react';
 
-const SettingsView = ({ userName, setUserName, currency, setCurrency, onClearData }) => {
+const SettingsView = ({ userName, setUserName, currency, setCurrency, onClearData, onDeleteProfile }) => {
   const [nameInput, setNameInput] = useState(userName);
   const [showSavedMsg, setShowSavedMsg] = useState(false);
 
@@ -49,16 +49,25 @@ const SettingsView = ({ userName, setUserName, currency, setCurrency, onClearDat
               />
             </div>
             
-            <div className="flex items-center gap-3 pt-2">
-              <button
-                type="submit"
-                className="py-2.5 px-5 bg-blue-500 hover:bg-blue-600 text-white font-semibold text-sm rounded-xl shadow-lg shadow-blue-500/25 transition-all flex items-center gap-2"
-              >
-                Save Profile
-              </button>
+            <div className="flex items-center justify-between pt-2">
+              <div className="flex gap-3">
+                <button
+                  type="submit"
+                  className="py-2.5 px-5 bg-blue-500 hover:bg-blue-600 text-white font-semibold text-sm rounded-xl shadow-lg shadow-blue-500/25 transition-all flex items-center gap-2"
+                >
+                  Save Profile
+                </button>
+                <button
+                  type="button"
+                  onClick={onDeleteProfile}
+                  className="py-2.5 px-5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 border border-rose-200 font-semibold text-sm rounded-xl transition-all"
+                >
+                  Delete Profile
+                </button>
+              </div>
               {showSavedMsg && (
                 <span className="text-emerald-600 text-sm font-semibold flex items-center gap-1 animate-fade-in">
-                  <Check size={16} /> Saved successfully!
+                  <Check size={16} /> Saved!
                 </span>
               )}
             </div>

@@ -2,7 +2,7 @@ import React from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
 
-const DashboardLayout = ({ children, activeTab, setActiveTab, searchQuery, setSearchQuery, userName, onLogout }) => {
+const DashboardLayout = ({ children, activeTab, setActiveTab, searchQuery, setSearchQuery, userName, onLogout, notifications = [] }) => {
   return (
     <div className="flex h-screen overflow-hidden text-slate-800">
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={onLogout} />
@@ -12,6 +12,7 @@ const DashboardLayout = ({ children, activeTab, setActiveTab, searchQuery, setSe
           setSearchQuery={setSearchQuery} 
           userName={userName} 
           activeTab={activeTab} 
+          notifications={notifications}
         />
         <main className="flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar">
           <div className="max-w-7xl mx-auto space-y-8">

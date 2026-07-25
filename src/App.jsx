@@ -11,17 +11,29 @@ import Login from './components/auth/Login';
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [transactions, setTransactions] = useState([]);
-  const [userName, setUserName] = useState('Imasha Liyanage');
+  const [userName, setUserName] = useState('');
   const [currency, setCurrency] = useState('Rs.');
   
   const [activeTab, setActiveTab] = useState('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
+  const [selectedMonth, setSelectedMonth] = useState('All');
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [dbConnected, setDbConnected] = useState(true);
+
+  // Helper to attach JWT token
+  const fetchWithAuth = async (url, options = {}) => {
+    const token = localStorage.getItem('fintrack_token');
+    const headers = {
+      ...options.headers,
+      'Authorization': `Bearer ${token}`
+    };
+    return fetch(url, { ...options, headers });
+  };
 
   // Fetch DB Connection Status
   const checkDbStatus = async () => {
@@ -54,8 +66,8 @@ function App() {
 
       // Parallel fetch settings and transactions
       const [txRes, settingsRes] = await Promise.all([
-        fetch('/api/transactions'),
-        fetch('/api/settings')
+        fetchWithAuth('/api/transactions'),
+        fetchWithAuth('/api/settings')
       ]);
 
       if (!txRes.ok || !settingsRes.ok) {
@@ -66,7 +78,7 @@ function App() {
       const settingsData = await settingsRes.json();
 
       setTransactions(txData);
-      setUserName(settingsData.username || 'Imasha Liyanage');
+      setUserName(settingsData.username || '');
       setCurrency(settingsData.currency || 'Rs.');
     } catch (err) {
       setError(err.message);
@@ -77,22 +89,107 @@ function App() {
   };
 
   useEffect(() => {
-    fetchData();
-    // Poll DB status every 5 seconds to show real-time changes
-    const interval = setInterval(checkDbStatus, 5000);
-    return () => clearInterval(interval);
-  }, []);
+    if (isLoggedIn) {
+      fetchData();
+      // Poll DB status every 5 seconds to show real-time changes
+      const interval = setInterval(checkDbStatus, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [isLoggedIn]);
 
   // Derived Calculations
-  const totalIncome = transactions
+  const currentYear = new Date().getFullYear().toString();
+  const availableYears = [...new Set([
+    currentYear,
+    ...transactions.map(tx => new Date(tx.rawDate || tx.date).getFullYear().toString())
+  ])].sort((a, b) => b - a);
+
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  const filteredTransactions = transactions.filter(tx => {
+    const d = new Date(tx.rawDate || tx.date);
+    const txYear = d.getFullYear().toString();
+    const txMonth = d.toLocaleString('default', { month: 'long' });
+    
+    if (selectedYear === 'All') return true;
+    if (selectedYear !== txYear) return false;
+    
+    if (selectedMonth === 'All') return true;
+    return txMonth === selectedMonth;
+  });
+
+  const totalIncome = filteredTransactions
     .filter((tx) => tx.amount > 0)
     .reduce((sum, tx) => sum + tx.amount, 0);
 
-  const totalExpenses = transactions
+  const totalExpenses = filteredTransactions
     .filter((tx) => tx.amount < 0)
     .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
 
   const totalBalance = totalIncome - totalExpenses;
+
+  // Smart Notifications Generator
+  const generateNotifications = () => {
+    const notifs = [];
+    if (transactions.length === 0) return notifs;
+
+    // Calculate overall balance
+    const overallIncome = transactions.filter(t => t.amount > 0).reduce((sum, t) => sum + t.amount, 0);
+    const overallExpense = transactions.filter(t => t.amount < 0).reduce((sum, t) => sum + Math.abs(t.amount), 0);
+    const overallBalance = overallIncome - overallExpense;
+
+    if (overallBalance < 5000) {
+      notifs.push({
+        id: 'low-balance',
+        type: 'warning',
+        title: 'Low Balance Warning',
+        message: `Your total balance is running low (${currency} ${overallBalance.toLocaleString()}).`,
+        time: 'Just now'
+      });
+    }
+
+    // Check for recent large expenses (last 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const recentLargeExpenses = transactions.filter(t => {
+      const txDate = new Date(t.rawDate || t.date);
+      return t.amount < -5000 && txDate >= sevenDaysAgo;
+    });
+
+    if (recentLargeExpenses.length > 0) {
+      notifs.push({
+        id: 'large-expense',
+        type: 'alert',
+        title: 'Large Expenses Detected',
+        message: `You have ${recentLargeExpenses.length} expense(s) over ${currency} 5,000 in the last 7 days.`,
+        time: 'Recent'
+      });
+    }
+
+    // Check for recent income
+    const recentIncome = transactions.filter(t => {
+      const txDate = new Date(t.rawDate || t.date);
+      return t.amount > 0 && txDate >= sevenDaysAgo;
+    });
+
+    if (recentIncome.length > 0) {
+      notifs.push({
+        id: 'recent-income',
+        type: 'success',
+        title: 'Income Received',
+        message: `Awesome! You recorded ${recentIncome.length} income(s) in the last 7 days.`,
+        time: 'Recent'
+      });
+    }
+
+    return notifs;
+  };
+
+  const notifications = generateNotifications();
 
   // Handlers
   const handleSaveTransaction = async (tx) => {
@@ -111,7 +208,7 @@ function App() {
         delete payload.id;
       }
 
-      const res = await fetch(url, {
+      const res = await fetchWithAuth(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -132,7 +229,7 @@ function App() {
   const handleDeleteTransaction = async (id) => {
     if (!window.confirm('Are you sure you want to delete this transaction?')) return;
     try {
-      const res = await fetch(`/api/transactions/${id}`, {
+      const res = await fetchWithAuth(`/api/transactions/${id}`, {
         method: 'DELETE'
       });
       if (!res.ok) {
@@ -157,7 +254,7 @@ function App() {
   const handleClearData = async () => {
     if (!window.confirm('CRITICAL WARNING: This will permanently delete all your transaction history from MongoDB. Proceed?')) return;
     try {
-      const res = await fetch('/api/transactions/clear', { method: 'POST' });
+      const res = await fetchWithAuth('/api/transactions/clear', { method: 'POST' });
       if (!res.ok) throw new Error('Failed to clear database');
       setTransactions([]);
     } catch (err) {
@@ -169,7 +266,7 @@ function App() {
   const handleUpdateUserName = async (name) => {
     try {
       setUserName(name);
-      await fetch('/api/settings', {
+      await fetchWithAuth('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: name })
@@ -182,10 +279,25 @@ function App() {
   const handleUpdateCurrency = async (curr) => {
     try {
       setCurrency(curr);
-      await fetch('/api/settings', {
+      await fetchWithAuth('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ currency: curr })
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteProfile = async () => {
+    if (!window.confirm('Are you sure you want to delete your profile? This will reset your name and currency preferences to default.')) return;
+    try {
+      setUserName('User');
+      setCurrency('Rs.');
+      await fetchWithAuth('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: 'User', currency: 'Rs.' })
       });
     } catch (err) {
       console.error(err);
@@ -229,9 +341,47 @@ function App() {
       case 'dashboard':
         return (
           <>
-            <div className="mb-2">
-              <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Ayubowan, <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-emerald-600">{userName}</span>! 👋</h1>
-              <p className="text-slate-500 mt-1">Here's a snapshot of your finances today.</p>
+            <div className="flex flex-col md:flex-row md:items-end justify-between mb-6 gap-4">
+              <div>
+                <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Welcome, <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-emerald-600">{userName}</span>! 👋</h1>
+                <p className="text-slate-500 mt-1">
+                  Here's a snapshot of your finances for <span className="font-semibold text-slate-700">
+                    {selectedYear === 'All' ? 'all time' : (selectedMonth === 'All' ? selectedYear : `${selectedMonth} ${selectedYear}`)}
+                  </span>.
+                </p>
+              </div>
+              <div className="flex items-center gap-3 bg-white/70 backdrop-blur-md border border-slate-200/60 p-1.5 rounded-2xl shadow-sm">
+                
+                {/* Year Selector */}
+                <select 
+                  value={selectedYear} 
+                  onChange={(e) => {
+                    setSelectedYear(e.target.value);
+                    if (e.target.value === 'All') setSelectedMonth('All');
+                  }}
+                  className="bg-white border border-slate-200/80 text-slate-800 font-semibold text-sm rounded-xl py-2 px-3 pr-7 focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer hover:bg-slate-50 transition-colors shadow-sm appearance-none"
+                  style={{ backgroundImage: 'url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2364748b%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right .5rem top 50%', backgroundSize: '.65rem auto' }}
+                >
+                  <option value="All">All Years</option>
+                  {availableYears.map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+
+                {/* Month Selector */}
+                <select 
+                  value={selectedMonth} 
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  disabled={selectedYear === 'All'}
+                  className={`bg-white border border-slate-200/80 font-semibold text-sm rounded-xl py-2 px-3 pr-7 focus:ring-2 focus:ring-indigo-500 outline-none transition-colors shadow-sm appearance-none ${selectedYear === 'All' ? 'text-slate-400 bg-slate-50 cursor-not-allowed' : 'text-slate-800 cursor-pointer hover:bg-slate-50'}`}
+                  style={{ backgroundImage: 'url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2364748b%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right .5rem top 50%', backgroundSize: '.65rem auto' }}
+                >
+                  <option value="All">All Months</option>
+                  {months.map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
             </div>
             
             <SummaryCards 
@@ -243,11 +393,11 @@ function App() {
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 h-full">
-                <MonthlyChart transactions={transactions} currency={currency} />
+                <MonthlyChart transactions={filteredTransactions} currency={currency} />
               </div>
               <div className="lg:col-span-1 h-full">
                 <TransactionList 
-                  transactions={transactions} 
+                  transactions={filteredTransactions} 
                   currency={currency} 
                   onEdit={handleEditClick} 
                   onDelete={handleDeleteTransaction} 
@@ -283,7 +433,8 @@ function App() {
             setUserName={handleUpdateUserName} 
             currency={currency} 
             setCurrency={handleUpdateCurrency} 
-            onClearData={handleClearData} 
+            onClearData={handleClearData}
+            onDeleteProfile={handleDeleteProfile}
           />
         );
       default:
@@ -303,7 +454,11 @@ function App() {
       setSearchQuery={setSearchQuery} 
       userName={userName}
       dbConnected={dbConnected}
-      onLogout={() => setIsLoggedIn(false)}
+      onLogout={() => {
+        localStorage.removeItem('fintrack_token');
+        setIsLoggedIn(false);
+      }}
+      notifications={notifications}
     >
       {renderContent()}
 

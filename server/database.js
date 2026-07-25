@@ -1,7 +1,15 @@
 import mongoose from 'mongoose';
 
+// Define User Schema
+const UserSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true }
+}, { timestamps: true });
+
 // Define Transaction Schema
 const TransactionSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   name: { type: String, required: true },
   category: { type: String, required: true },
   date: { type: String, required: true },
@@ -23,12 +31,14 @@ const TransactionSchema = new mongoose.Schema({
 
 // Define Settings Schema
 const SettingSchema = new mongoose.Schema({
-  key: { type: String, required: true, unique: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  key: { type: String, required: true },
   value: { type: String, required: true }
 }, {
   timestamps: true
 });
 
+const User = mongoose.model('User', UserSchema);
 const Transaction = mongoose.model('Transaction', TransactionSchema);
 const Setting = mongoose.model('Setting', SettingSchema);
 
@@ -46,6 +56,7 @@ const connectDB = async () => {
 
 export {
   connectDB,
+  User,
   Transaction,
   Setting,
   mongoose
