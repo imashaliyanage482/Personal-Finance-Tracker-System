@@ -9,7 +9,7 @@ import SettingsView from './components/dashboard/SettingsView';
 import Login from './components/auth/Login';
 
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('fintrack_token'));
   const [transactions, setTransactions] = useState([]);
   const [userName, setUserName] = useState('');
   const [currency, setCurrency] = useState('Rs.');
@@ -69,6 +69,12 @@ function App() {
         fetchWithAuth('/api/transactions'),
         fetchWithAuth('/api/settings')
       ]);
+
+      if (txRes.status === 401 || settingsRes.status === 401) {
+        localStorage.removeItem('fintrack_token');
+        setIsLoggedIn(false);
+        return;
+      }
 
       if (!txRes.ok || !settingsRes.ok) {
         throw new Error("Failed to load data from server");
