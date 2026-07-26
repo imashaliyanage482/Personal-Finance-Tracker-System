@@ -62,8 +62,8 @@ const authMiddleware = (req, res, next) => {
 // --- ROUTES ---
 
 // Database Status Endpoint
-app.get('/api/db-status', (req, res) => {
-  res.json({ connected: isDbConnected });
+app.get('/api/db-status', checkDbConnection, (req, res) => {
+  res.json({ connected: mongoose.connection.readyState === 1 });
 });
 
 // 0. Auth APIs

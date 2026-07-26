@@ -9,7 +9,7 @@ import SettingsView from './components/dashboard/SettingsView';
 import Login from './components/auth/Login';
 
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('fintrack_token'));
+  const [isLoggedIn, setIsLoggedIn] = useState(!!sessionStorage.getItem('fintrack_token'));
   const [transactions, setTransactions] = useState([]);
   const [userName, setUserName] = useState('');
   const [currency, setCurrency] = useState('Rs.');
@@ -27,7 +27,7 @@ function App() {
 
   // Helper to attach JWT token
   const fetchWithAuth = async (url, options = {}) => {
-    const token = localStorage.getItem('fintrack_token');
+    const token = sessionStorage.getItem('fintrack_token');
     const headers = {
       ...options.headers,
       'Authorization': `Bearer ${token}`
@@ -71,6 +71,7 @@ function App() {
       ]);
 
       if (txRes.status === 401 || settingsRes.status === 401) {
+        sessionStorage.removeItem('fintrack_token');
         localStorage.removeItem('fintrack_token');
         setIsLoggedIn(false);
         return;
@@ -461,6 +462,7 @@ function App() {
       userName={userName}
       dbConnected={dbConnected}
       onLogout={() => {
+        sessionStorage.removeItem('fintrack_token');
         localStorage.removeItem('fintrack_token');
         setIsLoggedIn(false);
       }}

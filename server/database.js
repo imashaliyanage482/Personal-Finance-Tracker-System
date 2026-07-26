@@ -42,13 +42,28 @@ const User = mongoose.model('User', UserSchema);
 const Transaction = mongoose.model('Transaction', TransactionSchema);
 const Setting = mongoose.model('Setting', SettingSchema);
 
+let cached = global.mongoose;
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
+}
+
 const connectDB = async () => {
+  if (cached.conn && mongoose.connection.readyState === 1) {
+    return true;
+  }
+
   const connUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/finance_tracker';
   try {
-    const conn = await mongoose.connect(connUri);
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
+    if (!cached.promise) {
+      cached.promise = mongoose.connect(connUri, {
+        bufferCommands: false,
+      });
+    }
+    cached.conn = await cached.promise;
+    console.log(`MongoDB Connected: ${cached.conn.connection.host}`);
     return true;
   } catch (error) {
+    cached.promise = null;
     console.error(`Error connecting to MongoDB: ${error.message}`);
     return false;
   }

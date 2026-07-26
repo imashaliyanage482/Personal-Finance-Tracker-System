@@ -73,8 +73,9 @@ const Login = ({ onLogin }) => {
         throw new Error(data.error || 'Authentication failed');
       }
 
-      // Save token securely
-      localStorage.setItem('fintrack_token', data.token);
+      // Save token securely in sessionStorage so visiting the site anew shows the login page
+      sessionStorage.setItem('fintrack_token', data.token);
+      localStorage.removeItem('fintrack_token');
       
       // Tell parent App we are logged in
       onLogin();
