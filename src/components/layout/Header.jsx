@@ -36,16 +36,16 @@ const Header = ({ searchQuery, setSearchQuery, userName, activeTab, notification
   };
 
   return (
-    <header className="h-20 bg-white/70 backdrop-blur-xl border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-10 shadow-sm">
+    <header className="h-16 md:h-20 bg-white/70 backdrop-blur-xl border-b border-slate-200 flex items-center justify-between px-4 md:px-8 sticky top-0 z-10 shadow-sm">
       <div className="flex items-center text-slate-800">
-        <h1 className="text-2xl font-extrabold tracking-widest uppercase bg-clip-text text-transparent bg-gradient-to-r from-indigo-700 to-indigo-900 drop-shadow-sm">
+        <h1 className="text-lg sm:text-2xl font-extrabold tracking-widest uppercase bg-clip-text text-transparent bg-gradient-to-r from-indigo-700 to-indigo-900 drop-shadow-sm">
           {activeTab}
         </h1>
       </div>
 
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-3 sm:gap-6">
         {showSearch && (
-          <div className="relative group w-64">
+          <div className="relative group w-36 sm:w-64">
             <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors">
               <Search size={18} />
             </div>
@@ -54,7 +54,7 @@ const Header = ({ searchQuery, setSearchQuery, userName, activeTab, notification
               placeholder="Search..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all text-sm placeholder-slate-400"
+              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all text-sm placeholder-slate-400"
             />
           </div>
         )}
