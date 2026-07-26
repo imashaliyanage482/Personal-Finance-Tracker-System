@@ -59,7 +59,7 @@ function App() {
     try {
       const isConnected = await checkDbStatus();
       if (!isConnected) {
-        setError("Database is offline. Check your MongoDB connection.");
+        setError("Unable to connect to server. Please try again in a moment.");
         setLoading(false);
         return;
       }
@@ -259,10 +259,10 @@ function App() {
   };
 
   const handleClearData = async () => {
-    if (!window.confirm('CRITICAL WARNING: This will permanently delete all your transaction history from MongoDB. Proceed?')) return;
+    if (!window.confirm('CRITICAL WARNING: This will permanently delete all your transaction history. Proceed?')) return;
     try {
       const res = await fetchWithAuth('/api/transactions/clear', { method: 'POST' });
-      if (!res.ok) throw new Error('Failed to clear database');
+      if (!res.ok) throw new Error('Failed to clear data');
       setTransactions([]);
     } catch (err) {
       alert(err.message);
@@ -317,7 +317,7 @@ function App() {
       return (
         <div className="flex flex-col items-center justify-center py-20 text-slate-500">
           <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-          <p className="font-semibold text-lg animate-pulse">Connecting to MongoDB...</p>
+          <p className="font-semibold text-lg animate-pulse">Connecting to server...</p>
         </div>
       );
     }
@@ -330,9 +330,9 @@ function App() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
-          <h2 className="text-xl font-bold text-slate-800">Database Connection Offline</h2>
+          <h2 className="text-xl font-bold text-slate-800">Connection Offline</h2>
           <p className="text-slate-500 text-sm leading-relaxed">
-            FinTrack could not establish a connection with MongoDB. Please verify that your MongoDB service is running locally or check the connection string in your <code>.env</code> file.
+            FinTrack could not establish a connection with the server. Please check your internet connection or try refreshing the page.
           </p>
           <button 
             onClick={fetchData}
