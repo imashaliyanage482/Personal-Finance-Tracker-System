@@ -1,16 +1,89 @@
-# React + Vite
+# 💰 Personal Finance Tracker System
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A modern, full-stack web application designed to help users effortlessly manage their personal finances, track income and expenses, and gain valuable visual insights into their spending habits.
 
-Currently, two official plugins are available:
+## ✨ Key Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **📊 Interactive Dashboard**: Visual financial insights and dynamic charts powered by **Recharts**.
+- **💸 Income & Expense Management**: Easily log, categorize, and track daily financial transactions.
+- **🔐 Secure Authentication**: User registration and sign-in with **JWT** authentication and **bcryptjs** password hashing.
+- **⚡ Modern Frontend**: High-performance UI built with **React 19**, **Vite**, **Tailwind CSS v4**, and **Lucide Icons**.
+- **🗄️ Robust Backend**: RESTful API built with **Node.js**, **Express.js**, and **MongoDB/Mongoose**.
+- **📱 Responsive & Beautiful UI**: Premium, mobile-friendly design for tracking finances anywhere.
 
-## React Compiler
+---
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 🛠️ Tech Stack
 
-## Expanding the Oxlint configuration
+### Frontend
+- **Framework**: [React 19](https://react.dev/) + [Vite](https://vitejs.dev/)
+- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/)
+- **Charts & Visualization**: [Recharts](https://recharts.org/)
+- **Icons**: [Lucide React](https://lucide.dev/)
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+### Backend
+- **Runtime**: [Node.js](https://nodejs.org/)
+- **Framework**: [Express.js](https://expressjs.com/)
+- **Database**: [MongoDB](https://www.mongodb.com/) with [Mongoose](https://mongoosejs.com/)
+- **Security & Authentication**: JSON Web Tokens (JWT) & bcryptjs
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- **Node.js** (v18 or higher)
+- **MongoDB** instance (local or Atlas connection string)
+
+### 1. Clone the Repository
+```bash
+git clone https://github.com/imashaliyanage482/Personal-Finance-Tracker-System.git
+cd Personal-Finance-Tracker-System
+```
+
+### 2. Install Dependencies
+Install all required frontend and backend packages:
+```bash
+npm install
+```
+
+### 3. Environment Configuration
+Create a `.env` file in the root directory and configure your environment variables:
+```env
+PORT=5000
+MONGODB_URI=your_mongodb_connection_string
+JWT_SECRET=your_jwt_secret_key
+```
+
+### 4. Run the Application
+You can run both the frontend development server and the backend server concurrently:
+```bash
+npm run dev:all
+```
+- **Frontend App**: Available at `http://localhost:5173`
+- **Backend API**: Available at `http://localhost:5000`
+
+---
+
+## 📁 Project Structure
+
+```text
+Personal-Finance-Tracker-System/
+├── api/                   # API routes and controllers
+├── public/                # Static assets
+├── server/                # Backend server modules
+├── src/
+│   ├── components/
+│   │   ├── auth/          # Authentication components (Login, Register)
+│   │   ├── dashboard/     # Financial charts and dashboard views
+│   │   └── layout/        # Navigation and main layout
+│   ├── App.jsx            # Main application component
+│   └── main.jsx           # Application entry point
+├── server.js              # Express backend entry point
+└── package.json           # Project dependencies & scripts
+```
+
+---
+
+## 📄 License
+This project is open-source and available under the MIT License.
