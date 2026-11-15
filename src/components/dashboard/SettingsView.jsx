@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Wallet, RotateCcw, AlertTriangle, Check } from 'lucide-react';
+import { User, Wallet, AlertTriangle, Check } from 'lucide-react';
 
 const SettingsView = ({ userName, setUserName, currency, setCurrency, onClearData, onDeleteProfile }) => {
   const [nameInput, setNameInput] = useState(userName);

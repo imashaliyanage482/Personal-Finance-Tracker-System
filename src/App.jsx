@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Plus, Sparkles, LogIn } from 'lucide-react';
 import DashboardLayout from './components/layout/DashboardLayout';
 import SummaryCards from './components/dashboard/SummaryCards';
 import MonthlyChart from './components/dashboard/MonthlyChart';
@@ -7,11 +8,22 @@ import AddEditTransactionModal from './components/dashboard/AddEditTransactionMo
 import AnalyticsView from './components/dashboard/AnalyticsView';
 import SettingsView from './components/dashboard/SettingsView';
 import Login from './components/auth/Login';
+import { getDemoTransactions, DEMO_NOTIFICATIONS } from './data/demoData';
 
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(!!sessionStorage.getItem('fintrack_token'));
-  const [transactions, setTransactions] = useState([]);
-  const [userName, setUserName] = useState('');
+  const [isLoggedIn, setIsLoggedIn] = useState(
+    !!(localStorage.getItem('fintrack_token') || sessionStorage.getItem('fintrack_token'))
+  );
+  const [transactions, setTransactions] = useState(() => (
+    (localStorage.getItem('fintrack_token') || sessionStorage.getItem('fintrack_token'))
+      ? []
+      : getDemoTransactions()
+  ));
+  const [userName, setUserName] = useState(() => (
+    (localStorage.getItem('fintrack_token') || sessionStorage.getItem('fintrack_token'))
+      ? ''
+      : 'Guest'
+  ));
   const [currency, setCurrency] = useState('Rs.');
   
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -21,13 +33,35 @@ function App() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   const [selectedMonth, setSelectedMonth] = useState('All');
   
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(isLoggedIn);
   const [error, setError] = useState(null);
   const [dbConnected, setDbConnected] = useState(true);
 
+  // Auth modal states for guest-to-user prompting
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalPrompt, setAuthModalPrompt] = useState('');
+  const [pendingAction, setPendingAction] = useState(null);
+
+  // Helper to open Auth modal with custom context message
+  const handleOpenAuth = (prompt = 'Sign in or create an account to start managing your finances.', action = null) => {
+    setAuthModalPrompt(prompt);
+    setPendingAction(() => action);
+    setIsAuthModalOpen(true);
+  };
+
+  // Guard function: requires login before performing an action
+  const requireAuth = (callback, prompt = 'Sign in or create an account to use this feature.') => {
+    if (!isLoggedIn) {
+      handleOpenAuth(prompt, callback);
+      return false;
+    }
+    if (callback) callback();
+    return true;
+  };
+
   // Helper to attach JWT token
   const fetchWithAuth = async (url, options = {}) => {
-    const token = sessionStorage.getItem('fintrack_token');
+    const token = localStorage.getItem('fintrack_token') || sessionStorage.getItem('fintrack_token');
     const headers = {
       ...options.headers,
       'Authorization': `Bearer ${token}`
@@ -74,6 +108,9 @@ function App() {
         sessionStorage.removeItem('fintrack_token');
         localStorage.removeItem('fintrack_token');
         setIsLoggedIn(false);
+        setTransactions(getDemoTransactions());
+        setUserName('Guest');
+        setLoading(false);
         return;
       }
 
@@ -101,6 +138,8 @@ function App() {
       // Poll DB status every 5 seconds to show real-time changes
       const interval = setInterval(checkDbStatus, 5000);
       return () => clearInterval(interval);
+    } else {
+      setLoading(false);
     }
   }, [isLoggedIn]);
 
@@ -140,6 +179,10 @@ function App() {
 
   // Smart Notifications Generator
   const generateNotifications = () => {
+    if (!isLoggedIn) {
+      return DEMO_NOTIFICATIONS;
+    }
+
     const notifs = [];
     if (transactions.length === 0) return notifs;
 
@@ -198,8 +241,9 @@ function App() {
 
   const notifications = generateNotifications();
 
-  // Handlers
+  // Handlers guarded with Auth
   const handleSaveTransaction = async (tx) => {
+    if (!requireAuth(null, 'Sign in or create an account to save transactions.')) return;
     try {
       let url = '/api/transactions';
       let method = 'POST';
@@ -209,7 +253,7 @@ function App() {
         method = 'PUT';
       }
 
-      // Prepare payload (removing frontend-generated temporary ID if creating)
+      // Prepare payload
       const payload = { ...tx };
       if (!editingTransaction) {
         delete payload.id;
@@ -228,12 +272,14 @@ function App() {
 
       await fetchData(); // reload fresh list
       setEditingTransaction(null);
+      setIsModalOpen(false);
     } catch (err) {
       alert(err.message);
     }
   };
 
   const handleDeleteTransaction = async (id) => {
+    if (!requireAuth(null, 'Sign in or create an account to manage your transactions.')) return;
     if (!window.confirm('Are you sure you want to delete this transaction?')) return;
     try {
       const res = await fetchWithAuth(`/api/transactions/${id}`, {
@@ -249,16 +295,24 @@ function App() {
   };
 
   const handleEditClick = (tx) => {
+    if (!requireAuth(null, 'Sign in to edit your transactions.')) return;
     setEditingTransaction(tx);
     setIsModalOpen(true);
   };
 
   const handleOpenAddModal = () => {
+    if (!requireAuth(() => {
+      setEditingTransaction(null);
+      setIsModalOpen(true);
+    }, 'Sign in or create an account to record your own transactions.')) {
+      return;
+    }
     setEditingTransaction(null);
     setIsModalOpen(true);
   };
 
   const handleClearData = async () => {
+    if (!requireAuth(null, 'Sign in to manage and clear your transactions history.')) return;
     if (!window.confirm('CRITICAL WARNING: This will permanently delete all your transaction history. Proceed?')) return;
     try {
       const res = await fetchWithAuth('/api/transactions/clear', { method: 'POST' });
@@ -269,8 +323,8 @@ function App() {
     }
   };
 
-
   const handleUpdateUserName = async (name) => {
+    if (!requireAuth(null, 'Sign in to customize and save your profile name.')) return;
     try {
       setUserName(name);
       await fetchWithAuth('/api/settings', {
@@ -284,6 +338,7 @@ function App() {
   };
 
   const handleUpdateCurrency = async (curr) => {
+    if (!requireAuth(null, 'Sign in to customize your preferred currency.')) return;
     try {
       setCurrency(curr);
       await fetchWithAuth('/api/settings', {
@@ -297,7 +352,8 @@ function App() {
   };
 
   const handleDeleteProfile = async () => {
-    if (!window.confirm('Are you sure you want to delete your profile? This will reset your name and currency preferences to default.')) return;
+    if (!requireAuth(null, 'Sign in to manage your profile settings.')) return;
+    if (!window.confirm('Are you sure you want to reset your profile? This will reset your name and currency preferences to default.')) return;
     try {
       setUserName('User');
       setCurrency('Rs.');
@@ -311,6 +367,32 @@ function App() {
     }
   };
 
+  // Called when login or register is successful inside Login modal
+  const handleLoginSuccess = async (user) => {
+    setIsLoggedIn(true);
+    setIsAuthModalOpen(false);
+    if (user?.name) {
+      setUserName(user.name);
+    }
+    await fetchData();
+    // Execute pending action if any was queued (e.g. open Add Modal)
+    if (pendingAction && typeof pendingAction === 'function') {
+      const act = pendingAction;
+      setPendingAction(null);
+      act();
+    }
+  };
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('fintrack_token');
+    localStorage.removeItem('fintrack_token');
+    setIsLoggedIn(false);
+    setTransactions(getDemoTransactions());
+    setUserName('Guest');
+    setCurrency('Rs.');
+    setActiveTab('dashboard');
+  };
+
   // Render Views dynamically based on active tab
   const renderContent = () => {
     if (loading && transactions.length === 0) {
@@ -322,7 +404,7 @@ function App() {
       );
     }
 
-    if (error && !dbConnected) {
+    if (error && !dbConnected && isLoggedIn) {
       return (
         <div className="bg-white/80 border border-red-200 backdrop-blur-md rounded-2xl p-8 max-w-2xl mx-auto text-center space-y-4 shadow-xl shadow-red-500/5">
           <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mx-auto text-red-500 border border-red-100">
@@ -348,46 +430,86 @@ function App() {
       case 'dashboard':
         return (
           <>
+            {/* Guest Banner if not logged in */}
+            {!isLoggedIn && (
+              <div className="bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-emerald-500/10 border border-indigo-200/60 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm backdrop-blur-sm">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-11 h-11 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-indigo-500/20">
+                    <Sparkles size={22} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm sm:text-base font-bold text-slate-800">FinTrack Preview Mode</h3>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700 uppercase tracking-wider">Demo Data</span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                      Explore the site and features freely. Sign in or create a free account to track your real income and expenses!
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleOpenAuth('Sign in or create an account to start tracking your finances.')}
+                  className="w-full sm:w-auto shrink-0 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-emerald-600 hover:from-indigo-700 hover:to-emerald-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md shadow-indigo-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <LogIn size={16} />
+                  <span>Sign In / Get Started</span>
+                </button>
+              </div>
+            )}
+
             <div className="flex flex-col md:flex-row md:items-end justify-between mb-6 gap-4">
               <div>
-                <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Welcome, <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-emerald-600">{userName}</span>! 👋</h1>
-                <p className="text-slate-500 mt-1">
+                <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 tracking-tight">
+                  Welcome, <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-emerald-600">{userName || 'Guest'}</span>! 👋
+                </h1>
+                <p className="text-slate-500 mt-1 text-sm sm:text-base">
                   Here's a snapshot of your finances for <span className="font-semibold text-slate-700">
                     {selectedYear === 'All' ? 'all time' : (selectedMonth === 'All' ? selectedYear : `${selectedMonth} ${selectedYear}`)}
                   </span>.
                 </p>
               </div>
-              <div className="flex items-center gap-3 bg-white/70 backdrop-blur-md border border-slate-200/60 p-1.5 rounded-2xl shadow-sm">
-                
-                {/* Year Selector */}
-                <select 
-                  value={selectedYear} 
-                  onChange={(e) => {
-                    setSelectedYear(e.target.value);
-                    if (e.target.value === 'All') setSelectedMonth('All');
-                  }}
-                  className="bg-white border border-slate-200/80 text-slate-800 font-semibold text-sm rounded-xl py-2 px-3 pr-7 focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer hover:bg-slate-50 transition-colors shadow-sm appearance-none"
-                  style={{ backgroundImage: 'url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2364748b%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right .5rem top 50%', backgroundSize: '.65rem auto' }}
-                >
-                  <option value="All">All Years</option>
-                  {availableYears.map(y => (
-                    <option key={y} value={y}>{y}</option>
-                  ))}
-                </select>
 
-                {/* Month Selector */}
-                <select 
-                  value={selectedMonth} 
-                  onChange={(e) => setSelectedMonth(e.target.value)}
-                  disabled={selectedYear === 'All'}
-                  className={`bg-white border border-slate-200/80 font-semibold text-sm rounded-xl py-2 px-3 pr-7 focus:ring-2 focus:ring-indigo-500 outline-none transition-colors shadow-sm appearance-none ${selectedYear === 'All' ? 'text-slate-400 bg-slate-50 cursor-not-allowed' : 'text-slate-800 cursor-pointer hover:bg-slate-50'}`}
-                  style={{ backgroundImage: 'url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2364748b%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right .5rem top 50%', backgroundSize: '.65rem auto' }}
+              <div className="flex flex-wrap items-center gap-2.5">
+                {/* Add Transaction Button right on Dashboard */}
+                <button
+                  onClick={handleOpenAddModal}
+                  className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-xl shadow-md shadow-indigo-600/20 flex items-center gap-2 transition-all cursor-pointer"
                 >
-                  <option value="All">All Months</option>
-                  {months.map(m => (
-                    <option key={m} value={m}>{m}</option>
-                  ))}
-                </select>
+                  <Plus size={16} />
+                  <span>Add Transaction</span>
+                </button>
+
+                <div className="flex items-center gap-2 bg-white/70 backdrop-blur-md border border-slate-200/60 p-1 rounded-2xl shadow-sm">
+                  {/* Year Selector */}
+                  <select 
+                    value={selectedYear} 
+                    onChange={(e) => {
+                      setSelectedYear(e.target.value);
+                      if (e.target.value === 'All') setSelectedMonth('All');
+                    }}
+                    className="bg-white border border-slate-200/80 text-slate-800 font-semibold text-xs sm:text-sm rounded-xl py-2 px-3 pr-7 focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer hover:bg-slate-50 transition-colors shadow-sm appearance-none"
+                    style={{ backgroundImage: 'url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2364748b%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right .5rem top 50%', backgroundSize: '.65rem auto' }}
+                  >
+                    <option value="All">All Years</option>
+                    {availableYears.map(y => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
+
+                  {/* Month Selector */}
+                  <select 
+                    value={selectedMonth} 
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    disabled={selectedYear === 'All'}
+                    className={`bg-white border border-slate-200/80 font-semibold text-xs sm:text-sm rounded-xl py-2 px-3 pr-7 focus:ring-2 focus:ring-indigo-500 outline-none transition-colors shadow-sm appearance-none ${selectedYear === 'All' ? 'text-slate-400 bg-slate-50 cursor-not-allowed' : 'text-slate-800 cursor-pointer hover:bg-slate-50'}`}
+                    style={{ backgroundImage: 'url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2364748b%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right .5rem top 50%', backgroundSize: '.65rem auto' }}
+                  >
+                    <option value="All">All Months</option>
+                    {months.map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
             
@@ -419,39 +541,89 @@ function App() {
         );
       case 'transactions':
         return (
-          <TransactionList 
-            transactions={transactions} 
-            currency={currency} 
-            onEdit={handleEditClick} 
-            onDelete={handleDeleteTransaction} 
-            onAddClick={handleOpenAddModal}
-            viewMode="full"
-            searchQuery={searchQuery}
-          />
+          <>
+            {!isLoggedIn && (
+              <div className="bg-indigo-50/80 border border-indigo-200/60 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-slate-700">
+                <div className="flex items-center gap-3">
+                  <Sparkles size={20} className="text-indigo-600 shrink-0" />
+                  <p className="text-xs sm:text-sm font-medium">
+                    You are exploring sample transactions. Sign in to add, edit, and keep track of your actual expenses.
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleOpenAuth('Sign in or create an account to start adding transactions.')}
+                  className="px-3.5 py-1.5 bg-indigo-600 text-white rounded-xl text-xs font-semibold hover:bg-indigo-700 transition-all shrink-0 cursor-pointer"
+                >
+                  Sign In
+                </button>
+              </div>
+            )}
+            <TransactionList 
+              transactions={transactions} 
+              currency={currency} 
+              onEdit={handleEditClick} 
+              onDelete={handleDeleteTransaction} 
+              onAddClick={handleOpenAddModal}
+              viewMode="full"
+              searchQuery={searchQuery}
+            />
+          </>
         );
       case 'analytics':
         return (
-          <AnalyticsView transactions={transactions} currency={currency} />
+          <>
+            {!isLoggedIn && (
+              <div className="bg-emerald-50/80 border border-emerald-200/60 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-slate-700">
+                <div className="flex items-center gap-3">
+                  <Sparkles size={20} className="text-emerald-600 shrink-0" />
+                  <p className="text-xs sm:text-sm font-medium">
+                    This analytics overview is based on demo preview data. Connect your personal account to see your real trends.
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleOpenAuth('Sign in or create an account to track your finances with smart analytics.')}
+                  className="px-3.5 py-1.5 bg-emerald-600 text-white rounded-xl text-xs font-semibold hover:bg-emerald-700 transition-all shrink-0 cursor-pointer"
+                >
+                  Get Started
+                </button>
+              </div>
+            )}
+            <AnalyticsView transactions={transactions} currency={currency} />
+          </>
         );
       case 'settings':
         return (
-          <SettingsView 
-            userName={userName} 
-            setUserName={handleUpdateUserName} 
-            currency={currency} 
-            setCurrency={handleUpdateCurrency} 
-            onClearData={handleClearData}
-            onDeleteProfile={handleDeleteProfile}
-          />
+          <>
+            {!isLoggedIn && (
+              <div className="bg-amber-50/80 border border-amber-200/60 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-slate-700">
+                <div className="flex items-center gap-3">
+                  <Sparkles size={20} className="text-amber-600 shrink-0" />
+                  <p className="text-xs sm:text-sm font-medium">
+                    Settings preferences are preview-only until you sign in to your personal FinTrack account.
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleOpenAuth('Sign in or create an account to customize your profile and settings.')}
+                  className="px-3.5 py-1.5 bg-indigo-600 text-white rounded-xl text-xs font-semibold hover:bg-indigo-700 transition-all shrink-0 cursor-pointer"
+                >
+                  Sign In
+                </button>
+              </div>
+            )}
+            <SettingsView 
+              userName={userName} 
+              setUserName={handleUpdateUserName} 
+              currency={currency} 
+              setCurrency={handleUpdateCurrency} 
+              onClearData={handleClearData}
+              onDeleteProfile={handleDeleteProfile}
+            />
+          </>
         );
       default:
         return <div>Tab view not found</div>;
     }
   };
-
-  if (!isLoggedIn) {
-    return <Login onLogin={() => setIsLoggedIn(true)} />;
-  }
 
   return (
     <DashboardLayout 
@@ -461,15 +633,14 @@ function App() {
       setSearchQuery={setSearchQuery} 
       userName={userName}
       dbConnected={dbConnected}
-      onLogout={() => {
-        sessionStorage.removeItem('fintrack_token');
-        localStorage.removeItem('fintrack_token');
-        setIsLoggedIn(false);
-      }}
+      isLoggedIn={isLoggedIn}
+      onOpenAuth={() => handleOpenAuth()}
+      onLogout={handleLogout}
       notifications={notifications}
     >
       {renderContent()}
 
+      {/* Add / Edit Transaction Modal */}
       <AddEditTransactionModal 
         isOpen={isModalOpen} 
         onClose={() => {
@@ -479,6 +650,18 @@ function App() {
         onSave={handleSaveTransaction} 
         transaction={editingTransaction} 
         currency={currency}
+      />
+
+      {/* Login & Register Modal for Guest conversion */}
+      <Login 
+        isModal={true}
+        isOpen={isAuthModalOpen}
+        onClose={() => {
+          setIsAuthModalOpen(false);
+          setPendingAction(null);
+        }}
+        onLogin={handleLoginSuccess}
+        promptMessage={authModalPrompt}
       />
     </DashboardLayout>
   );

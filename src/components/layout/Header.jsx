@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Bell, User, AlertTriangle, TrendingDown, TrendingUp, CheckCircle2 } from 'lucide-react';
+import { Search, Bell, User, AlertTriangle, TrendingDown, TrendingUp, CheckCircle2, LogIn } from 'lucide-react';
 
-const Header = ({ searchQuery, setSearchQuery, userName, activeTab, notifications = [] }) => {
+const Header = ({ searchQuery, setSearchQuery, userName, activeTab, notifications = [], isLoggedIn = false, onOpenAuth }) => {
   const showSearch = activeTab === 'dashboard' || activeTab === 'transactions';
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const notifRef = useRef(null);
@@ -43,9 +43,9 @@ const Header = ({ searchQuery, setSearchQuery, userName, activeTab, notification
         </h1>
       </div>
 
-      <div className="flex items-center gap-3 sm:gap-6">
+      <div className="flex items-center gap-2.5 sm:gap-5">
         {showSearch && (
-          <div className="relative group w-36 sm:w-64">
+          <div className="relative group w-32 sm:w-60 md:w-64">
             <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors">
               <Search size={18} />
             </div>
@@ -62,7 +62,7 @@ const Header = ({ searchQuery, setSearchQuery, userName, activeTab, notification
         <div className="relative" ref={notifRef}>
           <button 
             onClick={() => setIsNotifOpen(!isNotifOpen)}
-            className={`relative p-2 rounded-full transition-colors border ${isNotifOpen ? 'bg-indigo-50 text-indigo-600 border-indigo-100' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100 border-transparent hover:border-slate-200'}`}
+            className={`relative p-2 rounded-full transition-colors border ${isNotifOpen ? 'bg-indigo-50 text-indigo-600 border-indigo-100' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100 border-transparent hover:border-slate-200'} cursor-pointer`}
           >
             <Bell size={20} />
             {notifications.length > 0 && (
@@ -111,15 +111,35 @@ const Header = ({ searchQuery, setSearchQuery, userName, activeTab, notification
           )}
         </div>
 
-        <div className="flex items-center gap-3 cursor-pointer p-1 pr-3 rounded-full hover:bg-slate-100 transition-colors border border-transparent hover:border-slate-200">
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-emerald-500 flex items-center justify-center border border-indigo-200 shadow-sm text-white font-bold text-lg">
-            {userName ? userName.charAt(0).toUpperCase() : <User size={18} />}
+        {isLoggedIn ? (
+          <div className="flex items-center gap-3 cursor-pointer p-1 pr-3 rounded-full hover:bg-slate-100 transition-colors border border-transparent hover:border-slate-200">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-emerald-500 flex items-center justify-center border border-indigo-200 shadow-sm text-white font-bold text-lg">
+              {userName ? userName.charAt(0).toUpperCase() : <User size={18} />}
+            </div>
+            <div className="hidden sm:block text-sm">
+              <p className="font-semibold text-slate-800 leading-tight">{userName || 'User'}</p>
+              <p className="text-xs text-indigo-600 font-medium">FinTrack User</p>
+            </div>
           </div>
-          <div className="hidden sm:block text-sm">
-            <p className="font-semibold text-slate-800 leading-tight">{userName || 'Loading...'}</p>
-            <p className="text-xs text-indigo-600 font-medium">FinTrack User</p>
+        ) : (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onOpenAuth?.()}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-indigo-600 to-emerald-600 hover:from-indigo-700 hover:to-emerald-700 text-white rounded-xl font-bold text-xs sm:text-sm shadow-md shadow-indigo-500/20 transition-all cursor-pointer"
+            >
+              <LogIn size={15} />
+              <span>Sign In</span>
+            </button>
+            <div 
+              onClick={() => onOpenAuth?.()}
+              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold cursor-pointer transition-colors"
+              title="Click to sign in"
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+              <span>Preview</span>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </header>
   );

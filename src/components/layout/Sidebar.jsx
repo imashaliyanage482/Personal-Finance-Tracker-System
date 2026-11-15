@@ -1,7 +1,7 @@
 import React from 'react';
-import { LayoutDashboard, Receipt, PieChart, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, Receipt, PieChart, Settings, LogOut, LogIn } from 'lucide-react';
 
-const Sidebar = ({ activeTab, setActiveTab, onLogout }) => {
+const Sidebar = ({ activeTab, setActiveTab, onLogout, isLoggedIn = false, onOpenAuth }) => {
   const menuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', id: 'dashboard' },
     { icon: Receipt, label: 'Transactions', id: 'transactions' },
@@ -55,17 +55,29 @@ const Sidebar = ({ activeTab, setActiveTab, onLogout }) => {
         </div>
       </div>
 
-      {/* Logout Section */}
+      {/* Auth / Logout Section */}
       <div className="p-6 border-t border-slate-200/50 bg-slate-50/50">
-        <button
-          onClick={onLogout}
-          className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-600 hover:bg-rose-50 hover:text-rose-600 border border-transparent hover:border-rose-100 transition-all duration-300 cursor-pointer font-semibold group"
-        >
-          <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center shadow-sm group-hover:bg-rose-100 transition-colors">
-            <LogOut size={18} className="group-hover:text-rose-600 transition-colors" />
-          </div>
-          <span>Logout Account</span>
-        </button>
+        {isLoggedIn ? (
+          <button
+            onClick={onLogout}
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-600 hover:bg-rose-50 hover:text-rose-600 border border-transparent hover:border-rose-100 transition-all duration-300 cursor-pointer font-semibold group"
+          >
+            <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center shadow-sm group-hover:bg-rose-100 transition-colors">
+              <LogOut size={18} className="group-hover:text-rose-600 transition-colors" />
+            </div>
+            <span>Logout Account</span>
+          </button>
+        ) : (
+          <button
+            onClick={onOpenAuth}
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-emerald-600 hover:from-indigo-700 hover:to-emerald-700 text-white shadow-md shadow-indigo-500/20 transition-all duration-300 cursor-pointer font-semibold group"
+          >
+            <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center shadow-sm">
+              <LogIn size={18} className="text-white" />
+            </div>
+            <span>Sign In / Register</span>
+          </button>
+        )}
       </div>
     </aside>
   );

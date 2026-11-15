@@ -1,7 +1,7 @@
 import React from 'react';
-import { LayoutDashboard, Receipt, PieChart, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, Receipt, PieChart, Settings, LogOut, LogIn } from 'lucide-react';
 
-const MobileNavbar = ({ activeTab, setActiveTab, onLogout }) => {
+const MobileNavbar = ({ activeTab, setActiveTab, onLogout, isLoggedIn = false, onOpenAuth }) => {
   const menuItems = [
     { icon: LayoutDashboard, label: 'Home', id: 'dashboard' },
     { icon: Receipt, label: 'History', id: 'transactions' },
@@ -19,7 +19,7 @@ const MobileNavbar = ({ activeTab, setActiveTab, onLogout }) => {
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl transition-all duration-300 relative ${
+              className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl transition-all duration-300 relative cursor-pointer ${
                 isActive
                   ? 'text-indigo-600 scale-105'
                   : 'text-slate-400 hover:text-slate-700'
@@ -41,19 +41,34 @@ const MobileNavbar = ({ activeTab, setActiveTab, onLogout }) => {
           );
         })}
 
-        {/* Logout button in bottom navbar for mobile */}
-        <button
-          onClick={onLogout}
-          className="flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl text-slate-400 hover:text-rose-600 transition-all duration-300"
-          title="Logout"
-        >
-          <div className="p-2 rounded-xl bg-slate-100/80 hover:bg-rose-100 transition-colors">
-            <LogOut size={20} className="text-slate-500 hover:text-rose-600 transition-colors" />
-          </div>
-          <span className="text-[11px] font-semibold tracking-tight mt-0.5 text-slate-500">
-            Logout
-          </span>
-        </button>
+        {/* Auth / Logout button in bottom navbar for mobile */}
+        {isLoggedIn ? (
+          <button
+            onClick={onLogout}
+            className="flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl text-slate-400 hover:text-rose-600 transition-all duration-300 cursor-pointer"
+            title="Logout"
+          >
+            <div className="p-2 rounded-xl bg-slate-100/80 hover:bg-rose-100 transition-colors">
+              <LogOut size={20} className="text-slate-500 hover:text-rose-600 transition-colors" />
+            </div>
+            <span className="text-[11px] font-semibold tracking-tight mt-0.5 text-slate-500">
+              Logout
+            </span>
+          </button>
+        ) : (
+          <button
+            onClick={onOpenAuth}
+            className="flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl text-indigo-600 transition-all duration-300 cursor-pointer"
+            title="Sign In"
+          >
+            <div className="p-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 transition-colors">
+              <LogIn size={20} className="text-indigo-600 transition-colors" />
+            </div>
+            <span className="text-[11px] font-semibold tracking-tight mt-0.5 text-indigo-600 font-bold">
+              Sign In
+            </span>
+          </button>
+        )}
       </div>
     </nav>
   );
