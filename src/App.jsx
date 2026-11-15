@@ -8,17 +8,12 @@ import AddEditTransactionModal from './components/dashboard/AddEditTransactionMo
 import AnalyticsView from './components/dashboard/AnalyticsView';
 import SettingsView from './components/dashboard/SettingsView';
 import Login from './components/auth/Login';
-import { getDemoTransactions, DEMO_NOTIFICATIONS } from './data/demoData';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(
     !!(localStorage.getItem('fintrack_token') || sessionStorage.getItem('fintrack_token'))
   );
-  const [transactions, setTransactions] = useState(() => (
-    (localStorage.getItem('fintrack_token') || sessionStorage.getItem('fintrack_token'))
-      ? []
-      : getDemoTransactions()
-  ));
+  const [transactions, setTransactions] = useState([]);
   const [userName, setUserName] = useState(() => (
     (localStorage.getItem('fintrack_token') || sessionStorage.getItem('fintrack_token'))
       ? ''
@@ -108,7 +103,7 @@ function App() {
         sessionStorage.removeItem('fintrack_token');
         localStorage.removeItem('fintrack_token');
         setIsLoggedIn(false);
-        setTransactions(getDemoTransactions());
+        setTransactions([]);
         setUserName('Guest');
         setLoading(false);
         return;
@@ -180,7 +175,7 @@ function App() {
   // Smart Notifications Generator
   const generateNotifications = () => {
     if (!isLoggedIn) {
-      return DEMO_NOTIFICATIONS;
+      return [];
     }
 
     const notifs = [];
@@ -387,7 +382,7 @@ function App() {
     sessionStorage.removeItem('fintrack_token');
     localStorage.removeItem('fintrack_token');
     setIsLoggedIn(false);
-    setTransactions(getDemoTransactions());
+    setTransactions([]);
     setUserName('Guest');
     setCurrency('Rs.');
     setActiveTab('dashboard');
@@ -395,7 +390,7 @@ function App() {
 
   // Render Views dynamically based on active tab
   const renderContent = () => {
-    if (loading && transactions.length === 0) {
+    if (loading && transactions.length === 0 && isLoggedIn) {
       return (
         <div className="flex flex-col items-center justify-center py-20 text-slate-500">
           <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4"></div>
@@ -439,11 +434,11 @@ function App() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-sm sm:text-base font-bold text-slate-800">FinTrack Preview Mode</h3>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700 uppercase tracking-wider">Demo Data</span>
+                      <h3 className="text-sm sm:text-base font-bold text-slate-800">Welcome to FinTrack</h3>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700 uppercase tracking-wider">Guest Mode</span>
                     </div>
                     <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                      Explore the site and features freely. Sign in or create a free account to track your real income and expenses!
+                      Explore the dashboard and features freely. Sign in or create a free account to start tracking your finances!
                     </p>
                   </div>
                 </div>
@@ -547,7 +542,7 @@ function App() {
                 <div className="flex items-center gap-3">
                   <Sparkles size={20} className="text-indigo-600 shrink-0" />
                   <p className="text-xs sm:text-sm font-medium">
-                    You are exploring sample transactions. Sign in to add, edit, and keep track of your actual expenses.
+                    You are in guest preview. Sign in to add, edit, and keep track of your actual transactions.
                   </p>
                 </div>
                 <button
@@ -577,7 +572,7 @@ function App() {
                 <div className="flex items-center gap-3">
                   <Sparkles size={20} className="text-emerald-600 shrink-0" />
                   <p className="text-xs sm:text-sm font-medium">
-                    This analytics overview is based on demo preview data. Connect your personal account to see your real trends.
+                    Connect your account and add transactions to see your real-time analytics.
                   </p>
                 </div>
                 <button
